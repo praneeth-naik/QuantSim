@@ -15,16 +15,19 @@ class ChunkIO {
     io_uring ring{};
     bool ready = false;
 
-    bool transfer(uint64_t position, void* buffer, size_t bytes, bool writing) {
-        if (bytes > static_cast<size_t>(INT_MAX)) {
-            std::cerr << "Chunk exceeds supported request size\n";
+    int queued = 0;
+    int outstanding = 0;
+
+    bool queue(uint64_t position, void* buffer, size_t bytes, uint64_t id, bool writing) {
+        if (!ready || bytes > static_cast<size_t>(INT_MAX)) {
+            std::cerr << "Invalid I/O request\n";
             return false;
         }
 
         io_uring_sqe* request = io_uring_get_sqe(&ring);
 
         if (!request) {
-            std::cerr << "Could not obtain submission entry\n";
+            std::cerr << "Submission queue is full\n";
             return false;
         }
 
@@ -34,38 +37,22 @@ class ChunkIO {
             io_uring_prep_read(request, fd, buffer, bytes, position);
         }
 
-        int result = io_uring_submit(&ring);
-
-        if (result != 1) {
-            std::cerr << "Unexpected submission result: " << result << '\n';
-            return false;
-        }
-
-        io_uring_cqe* completion;
-
-        do {
-            result = io_uring_wait_cqe(&ring, &completion);
-        } while (result == -EINTR);
-
-        if (result < 0) {
-            std::cerr << "Completion error: " << strerror(-result) << '\n';
-            return false;
-        }
-
-        int completedBytes = completion->res;
-        io_uring_cqe_seen(&ring, completion);
-
-        if (completedBytes < 0) {
-            std::cerr << "I/O error: " << strerror(-completedBytes) << '\n';
-            return false;
-        }
-
-        if (completedBytes != static_cast<int>(bytes)) {
-            std::cerr << "Incomplete chunk transfer\n";
-            return false;
-        }
-
+        request->user_data = id;
+        queued++;
         return true;
+    }
+
+    bool transfer(uint64_t position, void* buffer, size_t bytes, bool writing) {
+        if (queued != 0 || outstanding != 0) {
+            std::cerr << "Blocking transfer requires an idle queue\n";
+            return false;
+        }
+
+        uint64_t completedId = 0;
+
+        return queue(position, buffer, bytes, 0, writing)
+            && submit()
+            && wait(completedId, bytes);
     }
 
 public:
@@ -84,6 +71,11 @@ public:
     }
 
     bool openFile(const char* path, uint64_t expectedBytes) {
+        if (fd >= 0) {
+            std::cerr << "File is already open\n";
+            return false;
+        }
+
         fd = open(path, O_RDWR);
 
         if (fd < 0) {
@@ -91,7 +83,7 @@ public:
             return false;
         }
 
-        struct stat info;
+        struct stat info{};
 
         if (fstat(fd, &info) != 0) {
             std::cerr << "File size check failed: " << strerror(errno) << '\n';
@@ -114,11 +106,85 @@ public:
         return true;
     }
 
+    bool queueRead(uint64_t position, void* buffer, size_t bytes, uint64_t id) {
+        return queue(position, buffer, bytes, id, false);
+    }
+
+    bool queueWrite(uint64_t position, const void* buffer,
+                    size_t bytes, uint64_t id) {
+        return queue(
+            position, const_cast<void*>(buffer), bytes, id, true
+        );
+    }
+
+    bool submit() {
+        if (!ready) {
+            return false;
+        }
+
+        while (queued > 0) {
+            int result = io_uring_submit(&ring);
+
+            if (result == -EINTR) {
+                continue;
+            }
+
+            if (result <= 0 || result > queued) {
+                std::cerr << "Submission failed: " << result << '\n';
+                return false;
+            }
+
+            queued -= result;
+            outstanding += result;
+        }
+
+        return true;
+    }
+
+    bool wait(uint64_t& id, size_t expectedBytes) {
+        if (outstanding == 0) {
+            std::cerr << "No submitted requests to wait for\n";
+            return false;
+        }
+
+        io_uring_cqe* completion = nullptr;
+        int result;
+
+        do {
+            result = io_uring_wait_cqe(&ring, &completion);
+        } while (result == -EINTR);
+
+        if (result < 0) {
+            std::cerr << "Completion error: " << strerror(-result) << '\n';
+            return false;
+        }
+
+        id = completion->user_data;
+        int completedBytes = completion->res;
+
+        io_uring_cqe_seen(&ring, completion);
+        outstanding--;
+
+        if (completedBytes < 0) {
+            std::cerr << "I/O error: " << strerror(-completedBytes) << '\n';
+            return false;
+        }
+
+        if (static_cast<size_t>(completedBytes) != expectedBytes) {
+            std::cerr << "Incomplete chunk transfer\n";
+            return false;
+        }
+
+        return true;
+    }
+
     bool read(uint64_t position, void* buffer, size_t bytes) {
         return transfer(position, buffer, bytes, false);
     }
 
-    bool write(uint64_t position, void* buffer, size_t bytes) {
-        return transfer(position, buffer, bytes, true);
+    bool write(uint64_t position, const void* buffer, size_t bytes) {
+        return transfer(
+            position, const_cast<void*>(buffer), bytes, true
+        );
     }
 };

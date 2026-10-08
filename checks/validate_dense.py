@@ -35,7 +35,7 @@ def read_state():
     raw = state_path.read_bytes()
 
     if len(raw) != COUNT * 16:
-        raise SystemExit("FAILED: unexpected state file size")
+        raise SystemExit("Failed: unexpected state file size")
 
     return [
         complex(real, imag)
@@ -76,7 +76,7 @@ for target in range(QUBITS):
         or not math.isfinite(value.imag)
         for value in actual
     ):
-        raise SystemExit(f"FAILED: non-finite amplitude for target {target}")
+        raise SystemExit(f"Failed: non-finite amplitude for target {target}")
 
     max_error = max(
         abs(result - reference)
@@ -90,6 +90,6 @@ for target in range(QUBITS):
     )
 
     if max_error > TOLERANCE or abs(probability - 1.0) > TOLERANCE:
-        raise SystemExit(f"FAILED: target {target}")
+        raise SystemExit(f"Failed: target {target}")
 
-print("All dense-state tests PASSED")
+print("All dense-state tests Passed")
