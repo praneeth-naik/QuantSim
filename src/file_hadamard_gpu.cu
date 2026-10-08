@@ -34,20 +34,17 @@ bool writeChunk(fstream& file, streamoff position,
 
 int main() {
     int n = 3;
-    int target = 2;
+    int target = 0;
 
     size_t count = size_t{1} << n;
     size_t chunkSize = 4;
     size_t stride = size_t{1} << target;
     size_t bytes = chunkSize * sizeof(cuDoubleComplex);
 
-    if (stride < chunkSize) {
-        cerr << "This version handles cross-chunk gates only\n";
-        return 1;
-    }
+    bool globalGate = stride >= chunkSize;
 
     vector<cuDoubleComplex> first(chunkSize);
-    vector<cuDoubleComplex> second(chunkSize);
+    vector<cuDoubleComplex> second(globalGate ? chunkSize : 0);
 
     fstream file("data/state.bin", ios::binary | ios::in | ios::out | ios::ate);
 
@@ -64,16 +61,19 @@ int main() {
     }
 
     cuDoubleComplex* deviceFirst;
-    cuDoubleComplex* deviceSecond;
+    cuDoubleComplex* deviceSecond = nullptr;
 
     check(cudaMalloc(&deviceFirst, bytes));
-    check(cudaMalloc(&deviceSecond, bytes));
+
+    if (globalGate) {
+        check(cudaMalloc(&deviceSecond, bytes));
+    }
 
     int threads = 128;
     int blocks = (chunkSize + threads - 1) / threads;
 
     for (size_t start = 0; start < count; start += chunkSize) {
-        if ((start & stride) != 0) {
+        if (globalGate && (start & stride) != 0) {
             continue;
         }
 
@@ -81,23 +81,36 @@ int main() {
         streamoff partnerPosition = (start + stride) * sizeof(cuDoubleComplex);
 
         if (!readChunk(file, position, first) ||
-            !readChunk(file, partnerPosition, second)) {
-            cerr << "Could not read chunk pair\n";
+            (globalGate && !readChunk(file, partnerPosition, second))) {
+            cerr << "Could not read chunks\n";
             return 1;
         }
 
         check(cudaMemcpy(deviceFirst, first.data(), bytes, cudaMemcpyHostToDevice));
-        check(cudaMemcpy(deviceSecond, second.data(), bytes, cudaMemcpyHostToDevice));
 
-        hadamardPair<<<blocks, threads>>>(deviceFirst, deviceSecond, chunkSize);
+        if (globalGate) {
+            check(cudaMemcpy(deviceSecond, second.data(), bytes, cudaMemcpyHostToDevice));
+
+            hadamardPair<<<blocks, threads>>>(
+                deviceFirst, deviceSecond, chunkSize
+            );
+        } else {
+            hadamardLocal<<<blocks, threads>>>(
+                deviceFirst, chunkSize, stride
+            );
+        }
+
         check(cudaGetLastError());
 
         check(cudaMemcpy(first.data(), deviceFirst, bytes, cudaMemcpyDeviceToHost));
-        check(cudaMemcpy(second.data(), deviceSecond, bytes, cudaMemcpyDeviceToHost));
+
+        if (globalGate) {
+            check(cudaMemcpy(second.data(), deviceSecond, bytes, cudaMemcpyDeviceToHost));
+        }
 
         if (!writeChunk(file, position, first) ||
-            !writeChunk(file, partnerPosition, second)) {
-            cerr << "Could not write chunk pair\n";
+            (globalGate && !writeChunk(file, partnerPosition, second))) {
+            cerr << "Could not write chunks\n";
             return 1;
         }
     }
@@ -110,8 +123,12 @@ int main() {
     }
 
     check(cudaFree(deviceFirst));
-    check(cudaFree(deviceSecond));
+
+    if (globalGate) {
+        check(cudaFree(deviceSecond));
+    }
 
     cout << "Applied GPU Hadamard to qubit " << target << '\n';
+    cout << "Gate type: " << (globalGate ? "global" : "local") << '\n';
     return 0;
 }

@@ -29,3 +29,33 @@ __global__ void hadamardPair(
         (a.y - b.y) * scale
     );
 }
+
+__global__ void hadamardLocal(
+    cuDoubleComplex* state,
+    size_t count,
+    size_t stride
+) {
+    size_t pair = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+
+    if (pair >= count / 2) {
+        return;
+    }
+
+    size_t i = (pair / stride) * (2 * stride) + pair % stride;
+    size_t j = i + stride;
+
+    cuDoubleComplex a = state[i];
+    cuDoubleComplex b = state[j];
+
+    double scale = 0.7071067811865475244;
+
+    state[i] = make_cuDoubleComplex(
+        (a.x + b.x) * scale,
+        (a.y + b.y) * scale
+    );
+
+    state[j] = make_cuDoubleComplex(
+        (a.x - b.x) * scale,
+        (a.y - b.y) * scale
+    );
+}

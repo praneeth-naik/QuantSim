@@ -7,7 +7,7 @@ using namespace std;
 
 int main() {
     int n = 3;
-    int target = 2;
+    int target = 0;
 
     size_t count = size_t{1} << n;
     size_t partner = size_t{1} << target;
@@ -65,10 +65,10 @@ int main() {
     cout << "Maximum amplitude error: " << maxError << '\n';
 
     if (maxError > tolerance) {
-        cerr << "Validation FAILED\n";
+        cerr << "Validation Failed\n";
         return 1;
     }
 
-    cout << "Validation PASSED\n";
+    cout << "Validation Passed\n";
     return 0;
 }
