@@ -2,6 +2,7 @@
 #include <vector>
 #include <complex>
 #include <cmath>
+#include <utility>
 
 using namespace std;
 
@@ -23,6 +24,18 @@ void applyHadamard(vector<complex<double>>& state, int target) {
     }
 }
 
+void applyCNOT(vector<complex<double>>& state, int control, int target) {
+    size_t controlMask = size_t{1} << control;
+    size_t targetMask = size_t{1} << target;
+
+    for (size_t i = 0; i < state.size(); i++) {
+        if ((i & controlMask) != 0 && (i & targetMask) == 0) {
+            size_t j = i | targetMask;
+            swap(state[i], state[j]);
+        }
+    }
+}
+
 int main() {
     int n = 3;
     size_t count = size_t{1} << n;
@@ -31,6 +44,7 @@ int main() {
     state[0] = 1.0;
 
     applyHadamard(state, 0);
+    applyCNOT(state, 0, 1);
 
     cout << "Qubits: " << n << '\n';
     cout << "Amplitudes: " << count << '\n';
