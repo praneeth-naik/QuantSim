@@ -32,9 +32,24 @@ bool writeChunk(fstream& file, streamoff position,
     return bool(file);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     int n = 3;
-    int target = 0;
+
+    if (argc != 2) {
+        cerr << "Usage: " << argv[0] << " <target>\n";
+        return 1;
+    }
+
+    char* end;
+    long targetArgument = strtol(argv[1], &end, 10);
+
+    if (end == argv[1] || *end != '\0' ||
+        targetArgument < 0 || targetArgument >= n) {
+        cerr << "Target must be an integer from 0 to " << n - 1 << '\n';
+        return 1;
+    }
+
+    int target = static_cast<int>(targetArgument);
 
     size_t count = size_t{1} << n;
     size_t chunkSize = 4;
