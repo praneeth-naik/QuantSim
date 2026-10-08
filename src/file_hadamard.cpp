@@ -8,18 +8,16 @@ using namespace std;
 
 int main() {
     int n = 3;
-    int target = 0;
+    int target = 2;
 
     size_t count = size_t{1} << n;
     size_t chunkSize = 4;
     size_t stride = size_t{1} << target;
 
-    if (stride >= chunkSize) {
-        cerr << "This gate requires cross-chunk processing\n";
-        return 1;
-    }
+    bool globalGate = stride >= chunkSize;
 
     vector<complex<double>> buffer(chunkSize);
+    vector<complex<double>> partnerBuffer(globalGate ? chunkSize : 0);
     double scale = 1.0 / sqrt(2.0);
 
     fstream file("data/state.bin", ios::binary | ios::in | ios::out | ios::ate);
@@ -37,6 +35,10 @@ int main() {
     }
 
     for (size_t start = 0; start < count; start += chunkSize) {
+        if (globalGate && (start & stride) != 0) {
+            continue;
+        }
+
         streamoff position = start * sizeof(complex<double>);
 
         file.seekg(position, ios::beg);
@@ -50,16 +52,51 @@ int main() {
             return 1;
         }
 
-        for (size_t base = 0; base < chunkSize; base += 2 * stride) {
-            for (size_t offset = 0; offset < stride; offset++) {
-                size_t i = base + offset;
-                size_t j = i + stride;
+        if (globalGate) {
+            size_t partnerStart = start + stride;
+            streamoff partnerPosition = partnerStart * sizeof(complex<double>);
 
+            file.seekg(partnerPosition, ios::beg);
+            file.read(
+                reinterpret_cast<char*>(partnerBuffer.data()),
+                chunkSize * sizeof(complex<double>)
+            );
+
+            if (!file) {
+                cerr << "Could not read partner chunk\n";
+                return 1;
+            }
+
+            for (size_t i = 0; i < chunkSize; i++) {
                 complex<double> a = buffer[i];
-                complex<double> b = buffer[j];
+                complex<double> b = partnerBuffer[i];
 
                 buffer[i] = (a + b) * scale;
-                buffer[j] = (a - b) * scale;
+                partnerBuffer[i] = (a - b) * scale;
+            }
+
+            file.seekp(partnerPosition, ios::beg);
+            file.write(
+                reinterpret_cast<const char*>(partnerBuffer.data()),
+                chunkSize * sizeof(complex<double>)
+            );
+
+            if (!file) {
+                cerr << "Could not write partner chunk\n";
+                return 1;
+            }
+        } else {
+            for (size_t base = 0; base < chunkSize; base += 2 * stride) {
+                for (size_t offset = 0; offset < stride; offset++) {
+                    size_t i = base + offset;
+                    size_t j = i + stride;
+
+                    complex<double> a = buffer[i];
+                    complex<double> b = buffer[j];
+
+                    buffer[i] = (a + b) * scale;
+                    buffer[j] = (a - b) * scale;
+                }
             }
         }
 
