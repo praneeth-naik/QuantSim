@@ -3,13 +3,19 @@
 #include <vector>
 #include <complex>
 #include <algorithm>
+#include "config.h"
 
 using namespace std;
 
-int main() {
-    int n = 3;
-    size_t count = size_t{1} << n;
-    size_t chunkSize = 4;
+int main(int argc, char* argv[]) {
+    Config config;
+
+    if (!parseConfig(argc, argv, config)) {
+        return 1;
+    }
+
+    size_t count = size_t{1} << config.qubits;
+    size_t chunkSize = size_t{1} << config.chunkQubits;
 
     vector<complex<double>> buffer(chunkSize);
 

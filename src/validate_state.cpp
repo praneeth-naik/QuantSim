@@ -3,30 +3,20 @@
 #include <complex>
 #include <cmath>
 #include <cstdlib>
+#include "config.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    int n = 3;
+    Config config;
 
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " <target>\n";
+    if (!parseConfig(argc, argv, config)) {
         return 1;
     }
 
-    char* end;
-    long targetArgument = strtol(argv[1], &end, 10);
+    size_t count = size_t{1} << config.qubits;
+    size_t partner = size_t{1} << config.target;
 
-    if (end == argv[1] || *end != '\0' ||
-        targetArgument < 0 || targetArgument >= n) {
-        cerr << "Target must be an integer from 0 to " << n - 1 << '\n';
-        return 1;
-    }
-
-    int target = static_cast<int>(targetArgument);
-
-    size_t count = size_t{1} << n;
-    size_t partner = size_t{1} << target;
     double scale = 1.0 / sqrt(2.0);
     double tolerance = 1e-12;
     double maxError = 0.0;

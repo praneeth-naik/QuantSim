@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <cstdlib>
+#include "config.h"
 
 using namespace std;
 
@@ -33,26 +34,16 @@ bool writeChunk(fstream& file, streamoff position,
 }
 
 int main(int argc, char* argv[]) {
-    int n = 3;
+    Config config;
 
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " <target>\n";
+    if (!parseConfig(argc, argv, config)) {
         return 1;
     }
 
-    char* end;
-    long targetArgument = strtol(argv[1], &end, 10);
+    int target = config.target;
 
-    if (end == argv[1] || *end != '\0' ||
-        targetArgument < 0 || targetArgument >= n) {
-        cerr << "Target must be an integer from 0 to " << n - 1 << '\n';
-        return 1;
-    }
-
-    int target = static_cast<int>(targetArgument);
-
-    size_t count = size_t{1} << n;
-    size_t chunkSize = 4;
+    size_t count = size_t{1} << config.qubits;
+    size_t chunkSize = size_t{1} << config.chunkQubits;
     size_t stride = size_t{1} << target;
     size_t bytes = chunkSize * sizeof(cuDoubleComplex);
 
