@@ -174,8 +174,29 @@ int main(int argc, char* argv[]) {
     }
 
     constexpr size_t MiB = size_t{1} << 20;
-    constexpr size_t hostBudget = 512 * MiB;
-    constexpr size_t deviceBudget = 512 * MiB;
+    int hostBudgetMiB = 512;
+    int deviceBudgetMiB = 512;
+
+    const char* hostBudgetText =
+        getenv("QUANTSIM_HOST_BUFFER_BUDGET_MIB");
+
+    const char* deviceBudgetText =
+        getenv("QUANTSIM_DEVICE_BUFFER_BUDGET_MIB");
+
+    if (hostBudgetText &&
+        !parseInteger(hostBudgetText, 1, 512, hostBudgetMiB)) {
+        cerr << "QUANTSIM_HOST_BUFFER_BUDGET_MIB must be " << "an integer between 1 and 512\n";
+        return 1;
+    }
+
+    if (deviceBudgetText &&
+        !parseInteger(deviceBudgetText, 1, 512, deviceBudgetMiB)) {
+        cerr << "QUANTSIM_DEVICE_BUFFER_BUDGET_MIB must be " << "an integer between 1 and 512\n";
+        return 1;
+    }
+
+    size_t hostBudget = static_cast<size_t>(hostBudgetMiB) * MiB;
+    size_t deviceBudget = static_cast<size_t>(deviceBudgetMiB) * MiB;
 
     size_t buffersPerSide =
         static_cast<size_t>(slotCount) * bufferCount;
