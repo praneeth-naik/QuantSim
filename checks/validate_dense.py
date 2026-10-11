@@ -5,11 +5,17 @@ import random
 import struct
 import subprocess
 from pathlib import Path
+import sys
 
 QUBITS = 6
 CHUNK_QUBITS = 2
 COUNT = 1 << QUBITS
 TOLERANCE = 1e-12
+EXECUTABLE = (
+    sys.argv[1]
+    if len(sys.argv) > 1
+    else "./build/file_hadamard_uring"
+)
 
 state_path = Path("data/state.bin")
 state_path.parent.mkdir(exist_ok=True)
@@ -49,7 +55,7 @@ for target in range(QUBITS):
 
     subprocess.run(
         [
-            "./build/file_hadamard_uring",
+            EXECUTABLE,
             str(QUBITS),
             str(target),
             str(CHUNK_QUBITS),

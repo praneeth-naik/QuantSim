@@ -56,10 +56,10 @@ int main() {
     }
 
     if (!valid || !seen[0] || !seen[1]) {
-        cerr << "Async ChunkIO validation FAILED\n";
+        cerr << "Async ChunkIO validation Failed\n";
         return 1;
     }
 
-    cout << "Async ChunkIO validation PASSED\n";
+    cout << "Async ChunkIO validation Passed\n";
     return 0;
 }
