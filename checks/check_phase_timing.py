@@ -1,10 +1,12 @@
 import csv
 import os
+import random
 import re
 import shutil
 import statistics
 import subprocess
 import tempfile
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -14,9 +16,13 @@ STORAGE = MOUNT / "QuantSim-storage"
 RESULTS = STORAGE / "results"
 
 QUBITS = 24
-TARGET = 0
-CHUNK_QUBITS = 14
-JOBS = 1 << (QUBITS - CHUNK_QUBITS)
+TRIALS = 3
+
+CONFIGURATIONS = [
+    (gate, target, chunk_bits)
+    for chunk_bits in (14, 16, 20)
+    for gate, target in (("local", 0), ("global", QUBITS - 1))
+]
 
 PROGRAMS = {
     "original": ROOT / "build/file_hadamard_direct",
@@ -60,6 +66,51 @@ def extract(output, label):
     return float(match.group(1))
 
 
+def measure(variant, configuration, trial, directory):
+    gate, target, chunk_bits = configuration
+    config = [QUBITS, target, chunk_bits]
+
+    run([ROOT / "build/init_state", *config], directory)
+
+    state_path = directory / "data/state.bin"
+
+    if state_path.stat().st_size != (1 << QUBITS) * 16:
+        raise RuntimeError("Unexpected initialized state size")
+
+    with open(state_path, "r+b", buffering=0) as state:
+        os.fsync(state.fileno())
+
+    output = run([PROGRAMS[variant], *config, 1], directory)
+
+    run([ROOT / "build/validate_state", *config], directory)
+
+    buffer_count = 2 if gate == "global" else 1
+    jobs = (1 << QUBITS) // (1 << chunk_bits) // buffer_count
+
+    row = {
+        "variant": variant,
+        "trial": trial,
+        "qubits": QUBITS,
+        "target": target,
+        "gate_type": gate,
+        "chunk_qubits": chunk_bits,
+        "slots": 1,
+        "jobs": jobs,
+        "processing_ms": extract(output, METRICS["processing_ms"]),
+    }
+
+    if variant == "diagnostic":
+        for key, label in METRICS.items():
+            row[key] = extract(output, label)
+
+        # Calculate within each run before taking medians.
+        row["stage_sum_ms"] = (
+            row["read_ms"] + row["gpu_ms"] + row["write_ms"]
+        )
+
+    return row
+
+
 def main():
     if not os.path.ismount(MOUNT):
         raise RuntimeError("External SSD is not mounted")
@@ -67,29 +118,29 @@ def main():
     if shutil.disk_usage(MOUNT).free < (512 << 20):
         raise RuntimeError("Need at least 512 MiB free on the external SSD")
 
-    required = [
+    for executable in (
         *PROGRAMS.values(),
         ROOT / "build/init_state",
         ROOT / "build/validate_state",
-    ]
-
-    for executable in required:
+    ):
         if not executable.is_file():
             raise RuntimeError(f"Missing executable: {executable}")
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = RESULTS / f"phase_timing_{stamp}.csv"
+    output_path = RESULTS / f"phase_calibration_{stamp}.csv"
 
     fields = [
-        "variant", "trial", "qubits", "target", "chunk_qubits", "slots",
-        *METRICS,
+        "variant", "trial", "qubits", "target", "gate_type",
+        "chunk_qubits", "slots", "jobs",
+        *METRICS, "stage_sum_ms",
     ]
-    measurements = {"original": [], "diagnostic": []}
 
-    # This directory is separate from the project's existing data directory.
+    groups = defaultdict(list)
+    rng = random.Random(42)
+
     with tempfile.TemporaryDirectory(
-        prefix="phase-check-", dir=STORAGE
+        prefix="phase-calibration-", dir=STORAGE
     ) as temporary:
         directory = Path(temporary)
         (directory / "data").mkdir()
@@ -98,87 +149,68 @@ def main():
             writer = csv.DictWriter(file, fieldnames=fields)
             writer.writeheader()
 
-            # Trial 0 warms up both builds; trials 1–3 are recorded.
-            for trial in range(4):
-                order = (
-                    ["original", "diagnostic"]
-                    if trial % 2 == 0
-                    else ["diagnostic", "original"]
-                )
+            for trial in range(TRIALS + 1):
+                configurations = list(CONFIGURATIONS)
+                rng.shuffle(configurations)
 
-                for variant in order:
-                    config = [QUBITS, TARGET, CHUNK_QUBITS]
+                for configuration in configurations:
+                    variants = list(PROGRAMS)
+                    rng.shuffle(variants)
 
-                    run(
-                        [ROOT / "build/init_state", *config],
-                        directory,
-                    )
+                    for variant in variants:
+                        row = measure(
+                            variant, configuration, trial, directory
+                        )
 
-                    with open(
-                        directory / "data/state.bin", "r+b", buffering=0
-                    ) as state:
-                        os.fsync(state.fileno())
+                        if trial > 0:
+                            writer.writerow(row)
+                            file.flush()
 
-                    output = run(
-                        [PROGRAMS[variant], *config, 1],
-                        directory,
-                    )
+                            key = (
+                                row["gate_type"],
+                                row["chunk_qubits"],
+                                variant,
+                            )
+                            groups[key].append(row)
 
-                    run(
-                        [ROOT / "build/validate_state", *config],
-                        directory,
-                    )
-
-                    row = {
-                        "variant": variant,
-                        "trial": trial,
-                        "qubits": QUBITS,
-                        "target": TARGET,
-                        "chunk_qubits": CHUNK_QUBITS,
-                        "slots": 1,
-                        "processing_ms": extract(
-                            output, METRICS["processing_ms"]
-                        ),
-                    }
-
-                    if variant == "diagnostic":
-                        for key, label in METRICS.items():
-                            row[key] = extract(output, label)
-
-                    if trial > 0:
-                        writer.writerow(row)
-                        file.flush()
-                        measurements[variant].append(row)
-
+                if trial == 0:
+                    print("Warm-up complete", flush=True)
+                else:
                     print(
-                        f"{variant}, trial={trial}: "
-                        f"{row['processing_ms']:.3f} ms, validation passed"
+                        f"Trial {trial}/{TRIALS} complete; "
+                        "all validations passed",
+                        flush=True,
                     )
 
-    original = statistics.median(
-        row["processing_ms"] for row in measurements["original"]
-    )
-    diagnostic = statistics.median(
-        row["processing_ms"] for row in measurements["diagnostic"]
-    )
+    print("\nPhase-calibration summary:")
 
-    print(f"\nOriginal median: {original:.3f} ms")
-    print(f"Diagnostic median: {diagnostic:.3f} ms")
-    print(
-        "Diagnostic vs original median: "
-        f"{100 * (diagnostic / original - 1):+.2f}%"
-    )
+    for gate, target, chunk_bits in CONFIGURATIONS:
+        original_rows = groups[(gate, chunk_bits, "original")]
+        diagnostic_rows = groups[(gate, chunk_bits, "diagnostic")]
 
-    for key in ("read_ms", "gpu_ms", "write_ms", "other_ms"):
-        value = statistics.median(
-            row[key] for row in measurements["diagnostic"]
+        original = statistics.median(
+            row["processing_ms"] for row in original_rows
         )
+        diagnostic = statistics.median(
+            row["processing_ms"] for row in diagnostic_rows
+        )
+
+        chunk_mib = ((1 << chunk_bits) * 16) / (1 << 20)
+
         print(
-            f"{key}: median total={value:.3f} ms, "
-            f"per job={value / JOBS:.6f} ms"
+            f"\n{gate}, chunk={chunk_mib:g} MiB: "
+            f"original={original:.3f} ms, "
+            f"diagnostic={diagnostic:.3f} ms, "
+            f"difference={100 * (diagnostic / original - 1):+.2f}%"
         )
 
-    print(f"Results saved: {output_path}")
+        for key in ("read_ms", "gpu_ms", "write_ms", "other_ms"):
+            per_job = statistics.median(
+                row[key] / row["jobs"] for row in diagnostic_rows
+            )
+            print(f"  {key}/job={per_job:.6f} ms")
+
+    print(f"\nResults saved: {output_path}")
 
 
 if __name__ == "__main__":
