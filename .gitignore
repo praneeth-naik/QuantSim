@@ -1,1 +1,13 @@
-me.txt
+# Generated executables
+/build/
+/checks/gpu_check
+/checks/io_check
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local external-SSD links
+/data
+/results
