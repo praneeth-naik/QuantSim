@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <climits>
+#include <vector>
 
 using namespace std;
 
@@ -129,13 +130,25 @@ void launchGPU(
 }
 
 int main(int argc, char* argv[]) {
-    Config config;
-
-    if (!parseConfig(argc, argv, config)) {
+    if (argc != 4 && argc != 5) {
+        cerr << "Usage: " << argv[0] << " <qubits> <target> <chunk_qubits> [slots]\n";
         return 1;
     }
 
-    constexpr int slotCount = 2;
+    Config config;
+
+    // The common parser handles the first three arguments.
+    if (!parseConfig(4, argv, config)) {
+        return 1;
+    }
+
+    int slotCount = 2;
+
+    if (argc == 5 &&
+        !parseInteger(argv[4], 1, 4, slotCount)) {
+        cerr << "Pipeline slots must be between 1 and 4\n";
+        return 1;
+    }
 
     size_t count = size_t{1} << config.qubits;
     size_t chunkSize = size_t{1} << config.chunkQubits;
@@ -150,7 +163,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Slot slots[slotCount];
+    vector<Slot> slots(slotCount);
     ChunkIO file;
 
     if (!file.openFile(

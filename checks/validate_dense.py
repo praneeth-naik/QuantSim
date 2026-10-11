@@ -59,6 +59,7 @@ for target in range(QUBITS):
             str(QUBITS),
             str(target),
             str(CHUNK_QUBITS),
+            *sys.argv[2:],
         ],
         check=True,
     )
