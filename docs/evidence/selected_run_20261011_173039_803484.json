@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-10-11T17:30:39.803231+05:30",
+  "selector": "depth-first",
+  "arguments": {
+    "qubits": 20,
+    "target": 0,
+    "host_budget_mib": 2,
+    "device_budget_mib": 2
+  },
+  "selection": {
+    "chunk_qubits": 14,
+    "chunk_bytes": 262144,
+    "slots": 4,
+    "gate_type": "local",
+    "buffer_bytes_per_side": 1048576
+  },
+  "state_bytes": 16777216,
+  "storage": "/media/praneeth/Crucial X6/QuantSim-storage",
+  "status": "passed",
+  "steps": [
+    {
+      "stage": "initialize",
+      "command": [
+        "/home/praneeth/Desktop/ACAD/PCAPL/QuantSim/build/init_state",
+        "20",
+        "0",
+        "14"
+      ],
+      "returncode": 0,
+      "stdout": "State file created: data/state.bin\nFile size: 16777216 bytes\nBuffer size: 262144 bytes\n",
+      "stderr": ""
+    },
+    {
+      "stage": "apply",
+      "command": [
+        "/home/praneeth/Desktop/ACAD/PCAPL/QuantSim/build/file_hadamard_direct",
+        "20",
+        "0",
+        "14",
+        "4"
+      ],
+      "returncode": 0,
+      "stdout": "Pinned host buffer bytes: 1048576\nDevice buffer bytes: 1048576\nI/O mode: direct\nSetup time (ms): 2059.554\nProcessing time (ms): 35.253\nApplied pipelined GPU Hadamard to qubit 0\nGate type: local\nPipeline slots: 4\nCompleted jobs: 64\n",
+      "stderr": ""
+    },
+    {
+      "stage": "validate",
+      "command": [
+        "/home/praneeth/Desktop/ACAD/PCAPL/QuantSim/build/validate_state",
+        "20",
+        "0",
+        "14"
+      ],
+      "returncode": 0,
+      "stdout": "Maximum amplitude error: 1.11022e-16\nValidation Passed\n",
+      "stderr": ""
+    }
+  ]
+}

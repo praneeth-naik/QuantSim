@@ -226,7 +226,7 @@ outperformed the simpler depth-first heuristic.
 
 ### Pipeline-depth calibration
 
-![Pipeline-depth calibration](../results/figures_20261011_174209_996224/pipeline_depth.png)
+![Pipeline-depth calibration](figures/pipeline_depth.png)
 
 **Figure 1.** GPU processing time for a 24-qubit state (256 MiB)
 on the external USB SSD. Points show medians of three trials;
@@ -242,7 +242,7 @@ run-to-run variability.
 
 ### Independent selector comparison
 
-![Independent selector comparison](../results/figures_20261011_174209_996224/selector_comparison.png)
+![Independent selector comparison](figures/selector_comparison.png)
 
 **Figure 2.** Processing time for a 28-qubit state (4 GiB), comparing
 the frozen model's selection with the depth-first heuristic.

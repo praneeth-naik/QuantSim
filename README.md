@@ -178,3 +178,15 @@ The current core GPU executable is built from
 
 See [the project summary](docs/project_summary.md) for the experimental
 findings and their interpretation.
+
+## Figures and experimental evidence
+
+![Pipeline depth](docs/figures/pipeline_depth.png)
+
+![Selector comparison](docs/figures/selector_comparison.png)
+
+The figures show processing-time medians and observed minimum–maximum
+ranges across three trials. Setup time is excluded.
+
+- [Experimental evidence and checksums](docs/evidence/README.md)
+- [Detailed findings and limitations](docs/project_summary.md)

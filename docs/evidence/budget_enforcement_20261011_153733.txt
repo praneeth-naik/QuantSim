@@ -1,0 +1,45 @@
+Host budget exceeded
+Configuration exceeds buffer memory budget
+Chunk bytes: 1048576
+Buffers per memory side: 2
+Host budget: 1048576 bytes
+Device budget: 536870912 bytes
+
+Device budget exceeded
+Configuration exceeds buffer memory budget
+Chunk bytes: 1048576
+Buffers per memory side: 2
+Host budget: 536870912 bytes
+Device budget: 1048576 bytes
+
+Invalid budget value
+QUANTSIM_HOST_BUFFER_BUDGET_MIB must be an integer between 1 and 512
+
+Local gate at the 1 MiB boundary
+Pinned host buffer bytes: 1048576
+Device buffer bytes: 1048576
+I/O mode: direct
+Setup time (ms): 2058.146
+Processing time (ms): 16.110
+Applied pipelined GPU Hadamard to qubit 0
+Gate type: local
+Pipeline slots: 4
+Completed jobs: 4
+
+Maximum amplitude error: 1.11022e-16
+Validation Passed
+
+Global gate at the 1 MiB boundary
+Pinned host buffer bytes: 1048576
+Device buffer bytes: 1048576
+I/O mode: direct
+Setup time (ms): 123.391
+Processing time (ms): 19.098
+Applied pipelined GPU Hadamard to qubit 16
+Gate type: global
+Pipeline slots: 2
+Completed jobs: 4
+
+Maximum amplitude error: 1.11022e-16
+Validation Passed
+

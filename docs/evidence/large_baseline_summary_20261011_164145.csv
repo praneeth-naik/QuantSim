@@ -1,0 +1,9 @@
+qubits,gate_type,budget_mib_per_side,policy,chunk_mib,slots,median_processing_ms,median_gate_wall_ms
+28,local,4,model,0.25,4,8891.423,10973.93300999829
+28,local,4,small_chunk,0.25,4,8891.423,10973.93300999829
+28,local,4,depth_first,1.0,4,8490.16,8742.762838010094
+28,local,4,fixed,1.0,4,8490.16,8742.762838010094
+28,global,8,model,0.25,4,8741.381,10842.430600998341
+28,global,8,small_chunk,0.25,4,8741.381,10842.430600998341
+28,global,8,depth_first,1.0,4,8454.659,8696.786489002989
+28,global,8,fixed,1.0,4,8454.659,8696.786489002989

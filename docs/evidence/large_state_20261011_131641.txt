@@ -1,0 +1,17 @@
+Running: ./build/init_state 30 29 16
+State file created: data/state.bin
+File size: 17179869184 bytes
+Buffer size: 1048576 bytes
+Running: ./build/file_hadamard_direct 30 29 16 4
+Pinned host buffer bytes: 8388608
+Device buffer bytes: 8388608
+I/O mode: direct
+Setup time (ms): 2086.188
+Processing time (ms): 33879.439
+Applied pipelined GPU Hadamard to qubit 29
+Gate type: global
+Pipeline slots: 4
+Completed jobs: 8192
+Running: ./build/validate_state 30 29 16
+Maximum amplitude error: 1.11022e-16
+Validation Passed
