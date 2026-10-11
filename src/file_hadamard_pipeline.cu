@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <climits>
 #include <vector>
+#include <chrono>
+#include <iomanip>
 
 using namespace std;
 
@@ -186,6 +188,8 @@ int main(int argc, char* argv[]) {
     cout << "Pinned host buffer bytes: " << bufferBytes << '\n';
     cout << "Device buffer bytes: " << bufferBytes << '\n';
 
+    auto setupStart = chrono::steady_clock::now();
+
     vector<Slot> slots(slotCount);
     ChunkIO file;
 
@@ -216,6 +220,8 @@ int main(int argc, char* argv[]) {
     size_t completedJobs = 0;
     size_t totalJobs = count / chunkSize / bufferCount;
     int ioPending = 0;
+
+    auto processingStart = chrono::steady_clock::now();
 
     while (completedJobs < totalJobs) {
         for (int index = 0; index < slotCount; index++) {
@@ -337,6 +343,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    auto processingEnd = chrono::steady_clock::now();
+
     for (Slot& slot : slots) {
         check(cudaStreamDestroy(slot.stream));
         check(cudaEventDestroy(slot.done));
@@ -346,6 +354,20 @@ int main(int argc, char* argv[]) {
             check(cudaFreeHost(slot.host[buffer]));
         }
     }
+
+    double setupMs =
+        chrono::duration<double, milli>(
+            processingStart - setupStart
+        ).count();
+
+    double processingMs =
+        chrono::duration<double, milli>(
+            processingEnd - processingStart
+        ).count();
+
+    cout << fixed << setprecision(3);
+    cout << "Setup time (ms): " << setupMs << '\n';
+    cout << "Processing time (ms): " << processingMs << '\n';
 
     cout << "Applied pipelined GPU Hadamard to qubit " << config.target << '\n';
     cout << "Gate type: " << (globalGate ? "global" : "local") << '\n';
