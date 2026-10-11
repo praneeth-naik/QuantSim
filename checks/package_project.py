@@ -49,6 +49,7 @@ def main():
     source_extensions = {
         ".cpp", ".cc", ".c", ".cu", ".h", ".hpp", ".cuh",
         ".py", ".sh", ".md", ".txt", ".json", ".yaml", ".yml",
+        ".csv", ".png", ".pdf",
     }
 
     for folder in ["src", "checks", "docs"]:
