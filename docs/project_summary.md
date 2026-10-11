@@ -221,3 +221,43 @@ bounded data buffers and useful pipeline speedups on the tested system.
 The experiments also show that configuration selection must account
 for the actual GPU scheduler. The evaluated performance model has not
 outperformed the simpler depth-first heuristic.
+
+## Figures
+
+### Pipeline-depth calibration
+
+![Pipeline-depth calibration](../results/figures_20261011_174209_996224/pipeline_depth.png)
+
+**Figure 1.** GPU processing time for a 24-qubit state (256 MiB)
+on the external USB SSD. Points show medians of three trials;
+whiskers show the observed minimum and maximum. Setup,
+initialization, and validation are excluded.
+
+Increasing pipeline depth generally reduced processing time.
+For local gates, the tested chunk sizes approached similar times
+at four slots. Global gates obtained much of their improvement
+at two slots, with smaller and sometimes non-monotonic changes
+afterward. The wide range for one configuration demonstrates
+run-to-run variability.
+
+### Independent selector comparison
+
+![Independent selector comparison](../results/figures_20261011_174209_996224/selector_comparison.png)
+
+**Figure 2.** Processing time for a 28-qubit state (4 GiB), comparing
+the frozen model's selection with the depth-first heuristic.
+Bars show medians of three trials; whiskers show the observed
+minimum and maximum. Both methods operated within the indicated
+data-buffer budgets.
+
+The model selected 0.25 MiB chunks with four slots; depth-first
+selected 1 MiB chunks with four slots. The model's median
+processing time was 4.73% higher for the local gate and 3.39%
+higher for the global gate.
+
+The model-selected configuration used one quarter of the
+pipeline data-buffer memory: 1 versus 4 MiB per side locally,
+and 2 versus 8 MiB per side globally. However, the simpler
+small-chunk rule selected the same configuration, so this
+memory tradeoff does not establish an advantage specific
+to the performance model.
