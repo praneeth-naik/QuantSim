@@ -15,12 +15,21 @@ class ChunkIO {
     io_uring ring{};
     bool ready = false;
 
+    bool directIO = false;
+    static constexpr size_t directAlignment = 4096;
+
     int queued = 0;
     int outstanding = 0;
 
     bool queue(uint64_t position, void* buffer, size_t bytes, uint64_t id, bool writing) {
         if (!ready || bytes > static_cast<size_t>(INT_MAX)) {
             std::cerr << "Invalid I/O request\n";
+            return false;
+        }
+
+        if (directIO &&
+            (position % directAlignment != 0 || bytes % directAlignment != 0 || reinterpret_cast<uintptr_t>(buffer)%directAlignment != 0)) {
+            std::cerr << "Unaligned direct I/O request\n";
             return false;
         }
 
@@ -70,13 +79,14 @@ public:
         }
     }
 
-    bool openFile(const char* path, uint64_t expectedBytes) {
+        bool openFile(const char* path, uint64_t expectedBytes, bool useDirect = false) {
         if (fd >= 0) {
             std::cerr << "File is already open\n";
             return false;
         }
 
-        fd = open(path, O_RDWR);
+        directIO = useDirect;
+        fd = open(path, O_RDWR | (directIO ? O_DIRECT : 0));
 
         if (fd < 0) {
             std::cerr << "Open error: " << strerror(errno) << '\n';

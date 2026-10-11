@@ -6,9 +6,10 @@ import struct
 import subprocess
 from pathlib import Path
 import sys
+import os
 
-QUBITS = 6
-CHUNK_QUBITS = 2
+QUBITS = int(os.environ.get("QUANTSIM_TEST_QUBITS", "6"))
+CHUNK_QUBITS = int(os.environ.get("QUANTSIM_TEST_CHUNK_QUBITS", "2"))
 COUNT = 1 << QUBITS
 TOLERANCE = 1e-12
 EXECUTABLE = (
