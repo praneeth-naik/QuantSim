@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 import sys
 import os
+import tempfile
 
 QUBITS = int(os.environ.get("QUANTSIM_TEST_QUBITS", "6"))
 CHUNK_QUBITS = int(os.environ.get("QUANTSIM_TEST_CHUNK_QUBITS", "2"))
@@ -18,8 +19,26 @@ EXECUTABLE = (
     else "./build/file_hadamard_uring"
 )
 
-state_path = Path("data/state.bin")
-state_path.parent.mkdir(exist_ok=True)
+mount = Path("/media/praneeth/Crucial X6")
+storage = mount / "QuantSim-storage"
+
+if not os.path.ismount(mount):
+    raise RuntimeError("External SSD is not mounted")
+
+storage = storage.resolve()
+storage.relative_to(mount.resolve())
+
+# Resolve before running the simulator from a different directory.
+EXECUTABLE = str(Path(EXECUTABLE).resolve(strict=True))
+
+workspace = tempfile.TemporaryDirectory(
+    prefix="dense-validation-",
+    dir=storage,
+)
+directory = Path(workspace.name)
+
+state_path = directory / "data/state.bin"
+state_path.parent.mkdir()
 
 # Generate a repeatable, normalized complex state.
 rng = random.Random(42)
@@ -62,6 +81,7 @@ for target in range(QUBITS):
             str(CHUNK_QUBITS),
             *sys.argv[2:],
         ],
+        cwd=directory,
         check=True,
     )
 
@@ -101,3 +121,5 @@ for target in range(QUBITS):
         raise SystemExit(f"Failed: target {target}")
 
 print("All dense-state tests Passed")
+
+workspace.cleanup()

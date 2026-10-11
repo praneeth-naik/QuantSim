@@ -261,3 +261,13 @@ and 2 versus 8 MiB per side globally. However, the simpler
 small-chunk rule selected the same configuration, so this
 memory tradeoff does not establish an advantage specific
 to the performance model.
+
+## Historical experiment scripts
+
+The earlier scripts `benchmark_depth.py`, `benchmark_chunks.py`, and
+`check_large_state.py` regenerate the project's `data/state.bin`.
+They should only be rerun when replacing that state is intended.
+
+For the standard demonstration, use `run_selected.py`, which creates
+an isolated temporary state. The updated `validate_dense.py` also
+uses a temporary directory on the external SSD.
