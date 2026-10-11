@@ -163,6 +163,29 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+        constexpr size_t MiB = size_t{1} << 20;
+    constexpr size_t hostBudget = 512 * MiB;
+    constexpr size_t deviceBudget = 512 * MiB;
+
+    size_t buffersPerSide =
+        static_cast<size_t>(slotCount) * bufferCount;
+
+    // Check before multiplying or allocating buffers.
+    if (bytes > hostBudget / buffersPerSide ||
+        bytes > deviceBudget / buffersPerSide) {
+        cerr << "Configuration exceeds buffer memory budget\n";
+        cerr << "Chunk bytes: " << bytes << '\n';
+        cerr << "Buffers per memory side: " << buffersPerSide << '\n';
+        cerr << "Host budget: " << hostBudget << " bytes\n";
+        cerr << "Device budget: " << deviceBudget << " bytes\n";
+        return 1;
+    }
+
+    size_t bufferBytes = bytes * buffersPerSide;
+
+    cout << "Pinned host buffer bytes: " << bufferBytes << '\n';
+    cout << "Device buffer bytes: " << bufferBytes << '\n';
+
     vector<Slot> slots(slotCount);
     ChunkIO file;
 
